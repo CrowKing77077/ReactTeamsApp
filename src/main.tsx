@@ -1,9 +1,9 @@
 import ReactDOM from "react-dom/client";
-import { BrowserRouter as Router } from "react-router-dom";
+import { BrowserRouter, HashRouter } from "react-router-dom";
 import { ThemeProvider } from "@mui/material/styles";
 import { theme } from "./styles/theme";
 import App from "./App";
-import { app } from '@microsoft/teams-js';
+import { app } from "@microsoft/teams-js";
 
 // MSAL imports
 import {
@@ -16,7 +16,33 @@ import { msalConfig } from "./authConfig";
 
 export const msalInstance = new PublicClientApplication(msalConfig);
 
-msalInstance.initialize().then(() => {
+async function initializeTeamsWithTimeout(
+  timeoutMs = 1500
+): Promise<{ inTeams: boolean; context?: unknown }> {
+  function withTimeout<T>(promise: Promise<T>, ms: number) {
+    return Promise.race<T>([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error("teams-timeout")), ms)
+      ) as Promise<T>,
+    ]);
+  }
+
+  try {
+    await withTimeout(app.initialize(), timeoutMs);
+    const context = await withTimeout(app.getContext(), timeoutMs);
+    return { inTeams: true, context };
+  } catch {
+    return { inTeams: false };
+  }
+}
+
+(async () => {
+  const [{ inTeams }, _] = await Promise.all([
+    initializeTeamsWithTimeout(1500),
+    msalInstance.initialize(),
+  ]);
+
   // Account selection logic is app dependent. Adjust as needed for different use cases.
   const accounts = msalInstance.getAllAccounts();
   if (accounts.length > 0) {
@@ -31,14 +57,24 @@ msalInstance.initialize().then(() => {
     }
   });
 
+  const RouterComponent = inTeams ? HashRouter : BrowserRouter;
+
   const root = ReactDOM.createRoot(
     document.getElementById("root") as HTMLElement
   );
   root.render(
-    <Router>
+    <RouterComponent>
       <ThemeProvider theme={theme}>
         <App pca={msalInstance} />
       </ThemeProvider>
-    </Router>
+    </RouterComponent>
   );
-});
+
+  if (inTeams) {
+    try {
+      app.notifySuccess();
+    } catch {
+      // no-op
+    }
+  }
+})();
