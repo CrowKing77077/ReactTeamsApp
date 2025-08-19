@@ -1,35 +1,45 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { Routes, Route, useNavigate } from "react-router-dom";
+// Material-UI imports
+import Grid from "@mui/material/Grid";
 
-function App() {
-  const [count, setCount] = useState(0)
+// MSAL imports
+import { MsalProvider } from "@azure/msal-react";
+import type { IPublicClientApplication } from "@azure/msal-browser";
+import { CustomNavigationClient } from "./utils/NavigationClient";
+
+// Sample app imports
+import { PageLayout } from "./ui-components/PageLayout";
+import { Home } from "./pages/Home";
+import { Profile } from "./pages/Profile";
+
+type AppProps = {
+  pca: IPublicClientApplication;
+};
+
+function App({ pca }: AppProps) {
+  // The next 3 lines are optional. This is how you configure MSAL to take advantage of the router's navigate functions when MSAL redirects between pages in your app
+  const navigate = useNavigate();
+  const navigationClient = new CustomNavigationClient(navigate);
+  pca.setNavigationClient(navigationClient);
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <MsalProvider instance={pca}>
+      <PageLayout>
+        <Grid container justifyContent="center">
+          <Pages />
+        </Grid>
+      </PageLayout>
+    </MsalProvider>
+  );
 }
 
-export default App
+function Pages() {
+  return (
+    <Routes>
+      <Route path="/profile" element={<Profile />} />
+      <Route path="/" element={<Home />} />
+    </Routes>
+  );
+}
+
+export default App;
