@@ -7,10 +7,13 @@ export const msalConfig: Configuration = {
     authority: `https://login.microsoftonline.com/${import.meta.env
       .VITE_ENTRA_TENANT_ID!}`,
     redirectUri: import.meta.env.VITE_REDIRECT_URI!,
+    navigateToLoginRequestUrl: false,
     // postLogoutRedirectUri: import.meta.env.VITE_REDIRECT_URI!,
   },
   system: {
     allowPlatformBroker: false, // Disables WAM Broker
+    // Allow redirect auth flow when app is embedded in an iframe (e.g., Microsoft Teams)
+    allowRedirectInIframe: true,
   },
 };
 
